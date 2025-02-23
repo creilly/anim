@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import colorsys
 
 debug = False
+render_stroke = True
 
 # els ordered so that zeroth element is on top
 def fill_svg(doc,els,defels):
@@ -178,8 +179,9 @@ def get_ellipse(
             for t in ts
         ] 
     ]
-    path = generate_wavy(vs,stroke_thickness,stroke_color,stroke_opacity,vps)
-    group.append(path)
+    if render_stroke:
+        path = generate_wavy(vs,stroke_thickness,stroke_color,stroke_opacity,vps)
+        group.append(path)
     return group, lg
 
 def ccw(A,B,C):

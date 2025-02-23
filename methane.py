@@ -54,7 +54,7 @@ def plot_methane(
     spheres = []
     if huesat is not None:
         hue, sat = huesat
-        cstart, hstart = [
+        cstop, hstop = [
             svgt.hsl_to_hex(hue, sat, lightnessd[s])
             for s in species
         ]

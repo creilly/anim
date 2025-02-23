@@ -10,7 +10,7 @@ pp = pprint.PrettyPrinter().pprint
 
 width, height = 1280, 720
 dpi = 96
-downsample = 8
+downsample = 2
 
 scale = 800
 
@@ -37,15 +37,21 @@ pend = pstart + np.array((-delta_methane/2,camera_rise,-camera_retreat))
 qstart = np.zeros(3)
 qend = np.array((-delta_methane/2,0,0))
 
-POPIN1, PAUSE1, ROTATE1, PANOUT, POPIN2, ROTATE2 = 1, 2, 3, 4, 5, 6
+POPIN1, PAUSE1, ROTATE1, PANOUT, POPIN2, ROTATE2, \
+     COHERENT, FLUCTUATING, INCOHERENT = 1, 2, 3, 4, 5, 6, 7, 8, 9
 
-scenes = (POPIN1, PAUSE1, ROTATE1, PANOUT, POPIN2, ROTATE2)
+scenes = (
+    POPIN1, PAUSE1, ROTATE1, 
+    PANOUT, POPIN2, ROTATE2, 
+    COHERENT, FLUCTUATING, INCOHERENT
+)
 
-scenestorender = (ROTATE2,)
+scenestorender = (COHERENT,FLUCTUATING,INCOHERENT)
 
 framed = {
     POPIN1: 75, PAUSE1: 75, ROTATE1: 75, PANOUT: 45, 
-    POPIN2: 30, ROTATE2: 90
+    POPIN2: 30, ROTATE2: 90, COHERENT: 75, FLUCTUATING: 75, 
+    INCOHERENT: 75
 }
 
 for scene, scenelength in framed.items(): 
@@ -125,6 +131,42 @@ def _get_rot_angle(scene,frame,mid):
         rotanglehist[mid] = frame
     return 2 * np.pi * (frame - rotanglehist[mid]) / rot_period
 
+sat_trans = 15 # frames
+sat_max = 50
+def get_sat(scene,sceneframe,mid):    
+    if scene not in (COHERENT,FLUCTUATING):
+        return 0
+    if scene == COHERENT:
+        return int(
+            round(
+                sat_max * (
+                1 if sceneframe > sat_trans else 
+                sceneframe / sat_trans
+                )
+            )
+        )
+    if scene == FLUCTUATING:
+        sceneframes = framed[FLUCTUATING]
+        framestogo = ftg = sceneframes - sceneframe
+        return int(
+            round(
+                sat_max * (
+                    1 if ftg > sat_trans else 
+                    ftg / sat_trans
+                )
+            )
+        )
+        
+def get_hue(scene,sceneframe,mid):
+    if scene != FLUCTUATING:
+        return hued[mid]
+    return np.random.randint(0,360)
+
+def get_hue_sat(scene,sceneframe,mid):
+    hue = get_hue(scene,sceneframe,mid)
+    sat = get_sat(scene,sceneframe,mid)    
+    return (hue,sat)
+
 rotsensed = {MA:+1,MB:-1}
 def get_rots(scene,frame,mid):
     rot_angle = _get_rot_angle(scene,frame,mid)
@@ -170,7 +212,7 @@ while True:
                     salphas = alphas, 
                     falphas = alphas, 
                     gidp = {MA:'a',MB:'b'}[mid],
-                    huesat = (hued[mid],fillsat)
+                    huesat = get_hue_sat(scene, sceneframe, mid)
                 )
             )        
         doc = svgtools.get_svg(width,height)
