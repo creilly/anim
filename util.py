@@ -35,7 +35,9 @@ def convert_svgs(folder,prepend='',flip=True,transparent=False,dpi=None):
         ],folder
     )
 
-def create_gif(folder,gifname='ani',prepend='',fps=15):
+def create_gif(folder,gifname='ani',prepend='',fps=12,gifprepend=None):
+    if gifprepend is None:
+        gifprepend = prepend
     run_command(
         [
             'magick',
@@ -44,7 +46,7 @@ def create_gif(folder,gifname='ani',prepend='',fps=15):
             '-dispose',
             '2',
             '{}*.png'.format(prepend), 
-            '{}.gif'.format(gifname),
+            '{}{}.gif'.format(gifprepend,gifname),
         ],folder
     )
 

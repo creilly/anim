@@ -1,16 +1,20 @@
 import methane, animate, perspective, svgtools, util
 import numpy as np, pprint
 from PIL import Image
+from matplotlib import pyplot as plt
+
+metascene = 1
 
 folder = 'scene1'
 
-single_file = True
+single_file = False
 
 pp = pprint.PrettyPrinter().pprint
 
 width, height = 1280, 720
 dpi = 96
-downsample = 2
+fpso = 12
+downsample = 1
 
 scale = 800
 
@@ -20,10 +24,10 @@ mids = (MA, MB)
 
 # methane separation
 delta_methane = 2.0
-rot_period = 45
+rot_periodo = 3 # seconds
 rot_mode = methane.TWIRL
 fillsat = 50
-hued = {MA:345, MB:187}
+hued = {MA:348, MB:197}
 
 # camera config
 camera_depth = 2.0
@@ -31,27 +35,41 @@ camera_height = 0.0
 camera_retreat = 0.75
 camera_rise = 0.75
 
+fps = fpso / downsample
+rot_period = rot_periodo * fps
+d_rot_angle = 2 * np.pi / rot_period
+
 pstart = np.array((0,0,-camera_depth))
 pend = pstart + np.array((-delta_methane/2,camera_rise,-camera_retreat))
 
 qstart = np.zeros(3)
 qend = np.array((-delta_methane/2,0,0))
 
-POPIN1, PAUSE1, ROTATE1, PANOUT, POPIN2, ROTATE2, \
-     COHERENT, FLUCTUATING, INCOHERENT = 1, 2, 3, 4, 5, 6, 7, 8, 9
+POPIN1, PAUSE1, ROTATE1, \
+    PANOUT, POPIN2, PAUSE2, ROTATE2, \
+     COHERENT, FLUCTUATING, INCOHERENT = (
+    ((index+1),name) for index, name in enumerate(
+        (
+            'popin1', 'pause1', 'rotate1', 
+            'panout', 'popin2', 'pause2', 'rotate2', 
+            'coherent', 'fluctuating', 'incoherent' 
+        )
+    )
+)
 
 scenes = (
     POPIN1, PAUSE1, ROTATE1, 
-    PANOUT, POPIN2, ROTATE2, 
+    PANOUT, POPIN2, PAUSE2, ROTATE2, 
     COHERENT, FLUCTUATING, INCOHERENT
 )
 
-scenestorender = (COHERENT,FLUCTUATING,INCOHERENT)
+RENDER_ALL = None
+scenestorender = RENDER_ALL # (ROTATE1, PANOUT,POPIN2,PAUSE2,ROTATE2)
 
 framed = {
-    POPIN1: 75, PAUSE1: 75, ROTATE1: 75, PANOUT: 45, 
-    POPIN2: 30, ROTATE2: 90, COHERENT: 75, FLUCTUATING: 75, 
-    INCOHERENT: 75
+    POPIN1: 73, PAUSE1: 85, ROTATE1: 85, PANOUT: 24, 
+    POPIN2: 15, PAUSE2: 72, ROTATE2: 120, COHERENT: 250, FLUCTUATING: 70, 
+    INCOHERENT: 70
 }
 
 for scene, scenelength in framed.items(): 
@@ -86,17 +104,20 @@ def get_camera(scene,sceneframe):
     m = perspective.get_pixel_matrix(*perspective.point_camera(p,q))
     return m, p
 
+alphascened = {MA:POPIN1,MB:POPIN2}
 alphaseq = {
     mid:{
         methane.C:(fc,),
         methane.H:fhs         
-    } for mid, (fc, *fhs) in (
-        (MA,(0.4, 0.7, 0.8, 0.9, 1.0)),
-        (MB,(0.0, 0.25, 0.5, 0.75, 1.0)),
-    )
+    } for mid, (fc, *fhs) in {
+        mid:np.array(secs) * fps / framed[alphascened[mid]]
+        for mid, secs in {
+            MA:(3.0, 4.8, 5.05, 5.30, 5.55),
+            MB:(0.0, 0.25, 0.5, 0.75, 1.0)
+        }.items()
+    }.items()    
 }
 
-alphascened = {MA:POPIN1,MB:POPIN2}
 def _get_alpha(scene,sceneframe,mid,species,atom):
     si = sid[scene]
     ts = alphascened[mid]
@@ -120,18 +141,7 @@ def get_alphas(scene,sceneframe,mid):
         ] for species in methane.species
     }
 
-rotanglehist = {mid:None for mid in mids}
-rotscened = {MA:ROTATE1,MB:ROTATE2}
-def _get_rot_angle(scene,frame,mid):
-    si = sid[scene]
-    rsi = sid[rotscened[mid]]
-    if si < rsi:
-        return 0.0
-    if rotanglehist[mid] == None:
-        rotanglehist[mid] = frame
-    return 2 * np.pi * (frame - rotanglehist[mid]) / rot_period
-
-sat_trans = 15 # frames
+sat_trans = 30 # frames
 sat_max = 50
 def get_sat(scene,sceneframe,mid):    
     if scene not in (COHERENT,FLUCTUATING):
@@ -156,20 +166,90 @@ def get_sat(scene,sceneframe,mid):
                 )
             )
         )
-        
+hues = {
+    MA:(
+        (hued[MA],0.00),
+        (120,0.20),
+        (240,0.40),
+        (319,0.60),
+        (721,0.80),
+        (361,1.00)
+    ),MB:(
+        (hued[MB],0.00),
+        (309,0.33),
+        (86,0.67),
+        (230,1.00),
+    )
+}
+def _get_subhue(sceneframe,mid):
+    f = sceneframe / framed[FLUCTUATING]
+    huel = hues[mid]
+    hueindex = 1
+    while True:
+        huep, fp = huel[hueindex]        
+        if f < fp:
+            hueo, fo = huel[hueindex-1]    
+            dfnorm = (f - fo)/(fp-fo)
+            hue = hueo + (huep - hueo) * (
+                3 * dfnorm**2 - 2 * dfnorm**3
+            )
+            return int(round(hue % 360))
+        hueindex += 1
+# for mid in mids:
+#     plt.plot(
+#         [
+#             _get_subhue(sceneframe,mid) 
+#             for sceneframe in range(framed[FLUCTUATING])
+#         ],label=str(mid)
+#     )
+# plt.legend()
+# plt.show()
+# exit()
+
 def get_hue(scene,sceneframe,mid):
     if scene != FLUCTUATING:
         return hued[mid]
-    return np.random.randint(0,360)
+    return _get_subhue(sceneframe,mid)
 
 def get_hue_sat(scene,sceneframe,mid):
     hue = get_hue(scene,sceneframe,mid)
     sat = get_sat(scene,sceneframe,mid)    
     return (hue,sat)
 
+rotanglehist = {mid:None for mid in mids}
+rotscened = {MA:ROTATE1,MB:ROTATE2}
+rot2waitd = {MA:0.0,MB:1.5} # seconds
+def _get_rot_angle(scene,sceneframe,mid):
+    si = sid[scene]
+    rsi = sid[rotscened[mid]]
+    psi = sid[PAUSE2]
+    r2si = sid[ROTATE2]
+    if si < rsi:
+        return 0.0
+    if rotanglehist[mid] == None:
+        rotanglehist[mid] = 0.0
+    rotangle = rotanglehist[mid]
+    if (
+        si == psi 
+        or 
+        (
+            si == r2si and sceneframe < fps*rot2waitd[mid]
+        )
+    ):
+        # MA spins until back to where it started, so it doesn't get locked in bad position
+        if mid == MB or (
+            min(
+                rotangle % (2*np.pi),
+                2 * np.pi - (rotangle % (2*np.pi)),
+            ) <= d_rot_angle
+        ):
+            return rotanglehist[mid]
+    rotanglehist[mid] += d_rot_angle
+    return rotanglehist[mid]
+
 rotsensed = {MA:+1,MB:-1}
-def get_rots(scene,frame,mid):
-    rot_angle = _get_rot_angle(scene,frame,mid)
+def get_rots(scene,sceneframe,mid):
+    rot_angle = _get_rot_angle(scene,sceneframe,mid)
     return [(rotsensed[mid]*methane.axisd[rot_mode],rot_angle)]
 
 jigglesd = {
@@ -187,17 +267,33 @@ util.clean_folder(folder,'svg','png')
 print('generating svgs')
 class EndRender(Exception): pass
 while True:
-    try:
+    try:        
+        scenenum, scenename = scene
+        prefix = 'S{:d}s{:02d}'.format(metascene,scenenum)
+        skipping_scene = (
+            scenestorender is not RENDER_ALL and 
+            scene not in scenestorender 
+        )
+        single_file_end = single_file and frame == 1
+        scene_finished = sceneframe == framed[scene]
         # check is scene is filtered or reached end of scene
-        while scene not in scenestorender or sceneframe == framed[scene]:
+        if skipping_scene or single_file_end or scene_finished:
+            if sceneframe > 0:
+                print('converting scene {} svg -> png'.format(scenename))
+                util.convert_svgs(folder,dpi=dpi,prepend=prefix)
+                print('creating scene {} gif'.format(scenename))
+                util.create_gif(folder,fps=15//downsample,prepend=prefix)
+                print('deleting scene {} svgs'.format(scenename))
+                util.clean_folder(folder,'svg',prepend=prefix)
             # get next scene index
             sip = sid[scene] + 1
             # if out of scenes, end render
-            if sip == len(scenes):
-                raise EndRender()            
+            if sip == len(scenes) or single_file_end:
+                raise EndRender()  
             scene = scenes[sip]
-            sceneframe = 0            
-        print(scene,sceneframe)
+            sceneframe = 0
+            continue     
+        print(str(scenenum).rjust(3), scenename.ljust(20),str(sceneframe).rjust(3))
         m, p = get_camera(scene,sceneframe)
         spheres = []
         for mid in mids:
@@ -207,7 +303,7 @@ while True:
                     canvas_center, 
                     mcs[mid], 
                     m, p, scale, 
-                    get_rots(scene,frame,mid), 
+                    get_rots(scene, sceneframe, mid), 
                     jiggles = jigglesd[mid][frame],
                     salphas = alphas, 
                     falphas = alphas, 
@@ -216,18 +312,11 @@ while True:
                 )
             )        
         doc = svgtools.get_svg(width,height)
-        animate.plot_spheres(doc,spheres)
-        svgtools.write_svg(doc,util.fmtf(folder,frame,'svg'))
-        if single_file:
-            raise EndRender()
+        animate.plot_spheres(doc,spheres)        
+        svgtools.write_svg(doc,util.fmtf(folder,frame,'svg',prepend=prefix))
         sceneframe += 1
         frame += 1
     except EndRender:
         break
-print('converting svg -> png')
-util.convert_svgs(folder,dpi=dpi)
 if single_file:
-    Image.open(util.fmtf(folder,0,'png')).show()
-else:
-    print('creating gif')
-    util.create_gif(folder)
+    Image.open(util.fmtf(folder,0,'png',prepend=prefix)).show()

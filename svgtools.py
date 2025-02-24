@@ -7,8 +7,9 @@ debug = False
 render_stroke = True
 
 # els ordered so that zeroth element is on top
-def fill_svg(doc,els,defels):
-    defsel = et.Element('defs')
+def fill_svg(doc,els,defels,defsel=None):
+    if defsel is None:
+        defsel = et.Element('defs')
     for defel in defels:
         defsel.append(defel)
     doc.append(defsel)    
@@ -288,6 +289,9 @@ def get_svg(w,h):
         version='1.1', 
         xmlns='http://www.w3.org/2000/svg'
     )
+
+def get_defs():
+    return et.Element('defs')
 
 def write_svg(doc,fname):
     with open(fname,'w') as f:
