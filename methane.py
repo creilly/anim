@@ -39,7 +39,8 @@ def plot_methane(
     salphas=None,
     falphas=None,
     gidp='',
-    huesat=None
+    huesat=None,
+    rchp=rch
 ):
     J, S, F = 0, 1, 2    
     optionsd = {
@@ -65,7 +66,7 @@ def plot_methane(
         atomopts = optionsd[atomindex]     
         for vecindex, vec in enumerate(vecs): 
             jiggle_vec = atomopts[J][vecindex]                          
-            vec = np.array(vec) + jiggle_vec
+            vec = rchp / rch * np.array(vec) + jiggle_vec
             for (axis, angle) in rots:
                 vec = rotate_vec(
                     vec, axis, angle

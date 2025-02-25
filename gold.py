@@ -25,7 +25,7 @@ def plot_surface(
     gangle=gangle, grad=grad, gstart=gstart, gstop=gstop    
 ):
     spheres = []
-    for nrow, row in enumerate(vibs):
+    for nrow, row in enumerate(qos):
         for ncol, qo in enumerate(row):
             jiggle = jiggles[nrow][ncol]            
             q = qo + np.array(
@@ -43,12 +43,12 @@ def plot_surface(
             )   
     return spheres
 
-def generate_gold_jiggles(n,gain):
-    return jiggle.generate_jiggles(n,(natoms,natoms),jiggle_gain)
+def generate_gold_jiggles(n,gain=jiggle_gain):
+    return jiggle.generate_jiggles(n,(natoms,natoms),gain)
 
 # square grid running parallel to x and z axes, 
 # centered at origin ( [0,0,0] )
-vibs = [
+qos = [
     [
         lc * np.array(
             (col-(natoms-1)/2, 0, row-(natoms-1)/2)

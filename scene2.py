@@ -4,11 +4,12 @@ from PIL import Image
 from matplotlib import pyplot as plt
 
 metascene = 2
+metascenesuffix = ''
 
 folder = 'scene2'
 
 single_file = False
-scene_giffing = False
+scene_giffing = True
 metascene_giffing = True
 
 pp = pprint.PrettyPrinter().pprint
@@ -26,36 +27,41 @@ MA, MB = 0, 1
 mids = (MA, MB)
 
 # methane separation
-delta_methane = 1.75
+delta_methane = 2.0
 rot_periodo = 5 # seconds
 rot_mode = methane.TUMBLE
 fillsatmin = 0
 fillsatmax = 50
 hued = {MA:348, MB:197}
 hueo = 142
+rchp = 0.5
 
 # camera config
 camera_depth = 2.0
 camera_height = 2.0
 camera_offset = 1.0
 camera_drop = 1.0
-camera_retreat = -1.0
-camera_shift = 2.0
-target_advance = 0.0
+camera_retreat = -1.5
+camera_shift = 1.5
+target_advance = -0.25
 
 # pulse config
 beg_depth = 10.0
 end_depth = -5.0
-ampmax = 0.4
+ampmax = 0.475
 ampmin = 0.1
 vphi = -np.pi/6
-deltav = 0.5
+deltav = 0.4
 PA, PB = 0, 1
-pulse_hues = {PA:265,PB:63}
+pulse_hues = {PA:265,PB:31} # 63}
 pulse_sat, pulse_light = 64, 61
-pulse_stroke, pulse_alpha = 12, 1.0
+pulse_alpha = 12
+psmin, psmax = 3, 16
 post_period = 2.0 # seconds
-deltalomax = 5.0
+deltalmin = -8.0
+delta_ab = 0.1 # transverse displacement of A and B pulses
+sigmadeltal = 0.5
+to_period = 0.3 # seconds
 
 fps = fpso / downsample
 rot_period = rot_periodo * fps
@@ -80,41 +86,7 @@ scenes = (
 )
 
 RENDER_ALL = None
-scenestorender = (PULSEIN,)
-
-framed = {
-    INTRO:3.0, PANOUT:3.5,
-    INPHASE:3.5, PULSEIN:3.5,
-    OUTPHASE:2.0, PULSEOUT:2.5, 
-    INCOH:3.0, PULSEINC:3.0
-} # seconds
-
-for scene, scenelength in framed.items(): 
-    framed[scene] = int(round(scenelength*fps))
-
-sceneindexd = sid = {
-    scene:scenes.index(scene)
-    for scene in scenes
-}
-
-framestarts = {
-    scene:sum(
-        framed[scenes[index]] 
-        for index in range(sid[scene])
-    ) for scene in scenes
-}
-
-frames = sum(
-    framecount for scene, framecount in framed.items() 
-    if scenestorender is RENDER_ALL or scene in scenestorender
-)
-
-pstart = np.array((camera_offset,camera_height,-camera_depth))
-pstop = pstart + np.array((camera_shift,-camera_drop,-camera_retreat))
-qstart = np.array((-delta_methane/2,0,0))
-qstop = qstart + np.array((0,0,target_advance))
-delta_ab = 0.1 # transverse displacement of A and B pulses
-osc_period = 0.5 # seconds
+scenestorender = RENDER_ALL # (INPHASE,PULSEIN,OUTPHASE,PULSEOUT,INCOH)
 
 ABSORBED, TRANSMITTED, HALF_ABSORBED = 0, 1, 2
 pulse_config = {
@@ -128,6 +100,54 @@ pulse_config = {
         (22.0, HALF_ABSORBED)
     ]    
 }
+
+framed = {
+    INTRO:3.0, PANOUT:3.5,
+    INPHASE:3.7, PULSEIN:2.5,
+    OUTPHASE:3.0, PULSEOUT:2.4, 
+    INCOH:3.0, PULSEINC:5.0
+} # seconds
+
+sceneindexd = sid = {
+    scene:scenes.index(scene)
+    for scene in scenes
+}
+
+framestarts = {
+    scene:sum(
+        framed[scenes[index]] 
+        for index in range(sid[scene])
+    ) for scene in scenes
+} # seconds
+
+# recompute times to compensate for cut scenes
+if scenestorender is not RENDER_ALL:
+    for pid, pl in pulse_config.items():
+        for index, (pt, pa) in enumerate(pl):
+            for scene in scenes:
+                tstart = framestarts[scene]
+                if tstart > pt:
+                    sceneo = scenes[sid[scene]-1]
+                    for scenep in scenes:
+                        if scenep == sceneo:
+                            break
+                        if scenep not in scenestorender:                            
+                            pt -= framed[scenep]                            
+                    break
+            pl[index] = (pt,pa)
+
+for scene, scenelength in framed.items(): 
+    framed[scene] = int(round(scenelength*fps))
+
+frames = sum(
+    framecount for scene, framecount in framed.items() 
+    if scenestorender is RENDER_ALL or scene in scenestorender
+) # frames
+
+pstart = np.array((camera_offset,camera_height,-camera_depth))
+pstop = pstart + np.array((camera_shift,-camera_drop,-camera_retreat))
+qstart = np.array((-delta_methane/2,0,0))
+qstop = qstart + np.array((0,0,target_advance))
 
 dab = delta_methane * np.array((-1,0,0))
 mac = np.zeros(3)
@@ -158,9 +178,9 @@ def get_camera(scene,sceneframe):
     m = perspective.get_pixel_matrix(*perspective.point_camera(p,q))
     return m, p
 
-huesat_trans = 1.5 # seconds
+huesat_trans = 0.75 # seconds
 huesatframemax = hsfm = huesat_trans * fps
-def _interp_sat(ss,es,sf,sfo=0):
+def _interp_sat(ss,es,sf,sfo=0,hsfm=hsfm):
     return ss + (es-ss)*(sf-sfo)/hsfm
 def get_sat_hue(scene,sceneframe,mid):    
     if scene in (INTRO, PANOUT, PULSEINC): return (
@@ -225,6 +245,8 @@ def get_limit(m,p,qo,qhat,zp,axis):
 
 vhat = -np.array((np.sin(vphi),0,np.cos(vphi)))
 v = deltav * vhat
+what = np.array((0,1,0))
+vperphat = np.cross(vhat,what)
 
 canvas_center = np.array([d*(1/2+s) for d, s in ((width,0),(height,canvas_shift))])
 mstop = perspective.get_pixel_matrix(
@@ -233,29 +255,60 @@ mstop = perspective.get_pixel_matrix(
     )
 )
 qo = 1/2*(mac + mbc)
-deltal = get_limit(mstop,pstop,qo,vhat,0,0) + 1.1*deltav*pulse.sigmas*pulse.deltat
-dldt = deltal / post_period
+deltalo = get_limit(mstop,pstop,qo,vhat,0,0) + 1.1*deltav*pulse.sigmas*pulse.deltat
+dldt = deltalo / post_period
+dtodf = pulse.deltat / pulse.sigmas / to_period / fps
 def get_pulses(m,p,frame):
     pulses = []
     for pid, pl in pulse_config.items():
-        
-    pulses = [
-        pulse.plot_pulse(
-            canvas_center, scale, 
-            v * (beg_depth + (end_depth-beg_depth)*frame/frames), m, p, v, 
-            np.array((0,1,0)), ampmax, 0.0, 
-            svgtools.hsl_to_hex(pulse_hues[PA],pulse_sat,pulse_light), 
-            pulse_stroke, pulse_alpha
-        )
-    ]
-    return pulses
+        for crossing_time, absorption in pl:
+            current_time = frame / fps
+            deltat = current_time - crossing_time
+            deltal = dldt * deltat
+            ao = ampmax
+            ap = {
+                ABSORBED:ampmin,
+                TRANSMITTED:ampmax,
+                HALF_ABSORBED:1/3*(2*ampmin+ampmax)
+            }[absorption]
+            st = psmax + (psmin - psmax) * (deltal-deltalo) / (
+                deltalmin - deltalo
+            )
+            if deltal > deltalo or deltal < deltalmin:
+                continue
+            if abs(deltal) > sigmadeltal:
+                amp = ap if deltat > 0 else ao
+            else:
+                amp = ap + (ao - ap) * (
+                    sigmadeltal - deltal
+                ) / (2 * sigmadeltal)
+            q = qo + deltal * vhat + {
+                PA:+1,PB:-1
+            }[pid] * vperphat * delta_ab
+            dz = m.dot(q-p)[2]
+            pulses.append(
+                (
+                    (pid,dz), pulse.plot_pulse(
+                        canvas_center, scale, 
+                        q, m, p, 
+                        v, what,
+                        amp, dtodf*frame, 
+                        svgtools.hsl_to_hex(pulse_hues[pid],pulse_sat,pulse_light), 
+                        st, pulse_alpha
+                    )
+                )
+            )
+    if pulses:
+        _, sorted_pulses = zip(*sorted(pulses))
+        return sorted_pulses
+    else: return []    
 
 print('cleaning folder')
 util.clean_folder(folder,'svg','png')
 print('generating svgs')
 class EndRender(Exception): pass
 def get_prefix(scenenum): 
-    return 'S{:d}s{:02d}'.format(metascene,scenenum)
+    return 'S{:d}{}s{:02d}'.format(metascene,metascenesuffix,scenenum)
 scene = scenes[0]
 sceneframe = frame = 0
 while True:
@@ -275,7 +328,7 @@ while True:
                 util.convert_svgs(folder,dpi=dpi,prepend=prefix)
                 if scene_giffing:
                     print('creating scene {} gif'.format(scenename))
-                    util.create_gif(folder,fps=15//downsample,prepend=prefix)
+                    util.create_gif(folder,fps=fps,prepend=prefix)
                 print('deleting scene {} svgs'.format(scenename))
                 util.clean_folder(folder,'svg',prepend=prefix)
             # get next scene index
@@ -297,7 +350,8 @@ while True:
                 get_rots(scene, sceneframe, mid), 
                 jiggles = jigglesd[mid][frame],                    
                 gidp = {MA:'a',MB:'b'}[mid],
-                huesat = get_hue_sat(scene, sceneframe, mid)
+                huesat = get_hue_sat(scene, sceneframe, mid),
+                rchp = rchp
             )
         pulses = get_pulses(m, p, frame)
         doc = svgtools.get_svg(width,height)
@@ -318,4 +372,4 @@ elif metascene_giffing:
     gifprefix = get_prefix(0)
     pngprefix = gifprefix[:2]
     print('creating composite gif')
-    util.create_gif(folder,prepend=pngprefix,gifprepend=gifprefix)
+    util.create_gif(folder,prepend=pngprefix,gifprepend=gifprefix,fps=fps)

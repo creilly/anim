@@ -35,6 +35,7 @@ def convert_svgs(folder,prepend='',flip=True,transparent=False,dpi=None):
         ],folder
     )
 
+gifprec = 2
 def create_gif(folder,gifname='ani',prepend='',fps=12,gifprepend=None):
     if gifprepend is None:
         gifprepend = prepend
@@ -42,7 +43,7 @@ def create_gif(folder,gifname='ani',prepend='',fps=12,gifprepend=None):
         [
             'magick',
             '-delay',
-            '1x{:d}'.format(fps),
+            '1{}x{:d}'.format('0'*gifprec,int(round(10**gifprec*fps))),
             '-dispose',
             '2',
             '{}*.png'.format(prepend), 

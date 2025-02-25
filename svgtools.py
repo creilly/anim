@@ -11,8 +11,9 @@ def fill_svg(doc,els,defels,defsel=None):
     if defsel is None:
         defsel = et.Element('defs')
     for defel in defels:
-        defsel.append(defel)
-    doc.append(defsel)    
+        defsel.append(defel)    
+    if defsel not in doc:
+        doc.append(defsel)
     for el in els[::-1]:
         doc.append(el)
 

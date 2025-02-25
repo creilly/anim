@@ -14,7 +14,7 @@ pp = pprint.PrettyPrinter().pprint
 width, height = 1280, 720
 dpi = 96
 fpso = 12
-downsample = 1
+downsample = 2
 
 scale = 800
 
@@ -24,7 +24,7 @@ mids = (MA, MB)
 
 # methane separation
 delta_methane = 2.0
-rot_periodo = 3 # seconds
+rot_periodo = 4.0 # seconds
 rot_mode = methane.TWIRL
 fillsat = 50
 hued = {MA:348, MB:197}
@@ -64,11 +64,11 @@ scenes = (
 )
 
 RENDER_ALL = None
-scenestorender = RENDER_ALL # (ROTATE1, PANOUT,POPIN2,PAUSE2,ROTATE2)
+scenestorender = (PANOUT,POPIN2,PAUSE2,ROTATE2)
 
 framed = {
-    POPIN1: 73, PAUSE1: 85, ROTATE1: 85, PANOUT: 24, 
-    POPIN2: 15, PAUSE2: 72, ROTATE2: 120, COHERENT: 250, FLUCTUATING: 70, 
+    POPIN1: 73, PAUSE1: 71, ROTATE1: 74, PANOUT: 24, 
+    POPIN2: 15, PAUSE2: 61, ROTATE2: 114, COHERENT: 252, FLUCTUATING: 60, 
     INCOHERENT: 70
 }
 
@@ -112,7 +112,7 @@ alphaseq = {
     } for mid, (fc, *fhs) in {
         mid:np.array(secs) * fps / framed[alphascened[mid]]
         for mid, secs in {
-            MA:(3.0, 4.8, 5.05, 5.30, 5.55),
+            MA:(2.8, 5.0, 5.25, 5.5, 5.75),
             MB:(0.0, 0.25, 0.5, 0.75, 1.0)
         }.items()
     }.items()    
@@ -141,20 +141,43 @@ def get_alphas(scene,sceneframe,mid):
         ] for species in methane.species
     }
 
+def smooth_step(v1,v2,x):
+    return v1 + (v2-v1) * (
+        3 * x**2 - 2 * x**3
+    )
+
 sat_trans = 30 # frames
 sat_max = 50
-def get_sat(scene,sceneframe,mid):    
+sat_over = 80
+sat_none = 0
+emphd = {MA:93, MB:126}
+emph_trans = 12
+def get_sat(scene,sceneframe,mid):
     if scene not in (COHERENT,FLUCTUATING):
-        return 0
+        return sat_none
     if scene == COHERENT:
-        return int(
-            round(
-                sat_max * (
-                1 if sceneframe > sat_trans else 
-                sceneframe / sat_trans
-                )
-            )
-        )
+        if sceneframe < sat_trans:            
+            return sat_max * sceneframe / sat_trans
+        empha, emphb = [
+            emph - emph_trans for emph in (emphd[MA], emphd[MB])
+        ]
+        if sceneframe < empha:
+            return sat_max
+        dsf = sceneframe - empha        
+        if dsf > (emphb - empha):
+            dsf = sceneframe - emphb
+            sat_crit = {
+                MB:sat_over,MA:sat_none
+            }[mid]
+        else:
+            sat_crit = {
+                MA:sat_over,MB:sat_none
+            }[mid]
+        if dsf < emph_trans:
+            return smooth_step(sat_max,sat_crit,dsf/emph_trans)
+        if dsf < 2 * emph_trans:
+            return smooth_step(sat_crit,sat_max,(dsf-emph_trans)/emph_trans)
+        return sat_max        
     if scene == FLUCTUATING:
         sceneframes = framed[FLUCTUATING]
         framestogo = ftg = sceneframes - sceneframe
@@ -216,36 +239,22 @@ def get_hue_sat(scene,sceneframe,mid):
     sat = get_sat(scene,sceneframe,mid)    
     return (hue,sat)
 
-rotanglehist = {mid:None for mid in mids}
+rotanglehist = {mid:0.0 for mid in mids}
 rotscened = {MA:ROTATE1,MB:ROTATE2}
-rot2waitd = {MA:0.0,MB:1.5} # seconds
+rot2waitd = {MA:0.0,MB:0.75} # seconds
 def _get_rot_angle(scene,sceneframe,mid):
+    rotangle = rotanglehist[mid]
     si = sid[scene]
     rsi = sid[rotscened[mid]]
-    psi = sid[PAUSE2]
-    r2si = sid[ROTATE2]
     if si < rsi:
-        return 0.0
-    if rotanglehist[mid] == None:
-        rotanglehist[mid] = 0.0
-    rotangle = rotanglehist[mid]
-    if (
-        si == psi 
-        or 
-        (
-            si == r2si and sceneframe < fps*rot2waitd[mid]
-        )
-    ):
-        # MA spins until back to where it started, so it doesn't get locked in bad position
-        if mid == MB or (
-            min(
-                rotangle % (2*np.pi),
-                2 * np.pi - (rotangle % (2*np.pi)),
-            ) <= d_rot_angle
-        ):
-            return rotanglehist[mid]
-    rotanglehist[mid] += d_rot_angle
-    return rotanglehist[mid]
+        return rotangle
+    pausescenes = (POPIN2,PAUSE2)
+    if scene in pausescenes:
+        return rotangle    
+    if scene == ROTATE2 and sceneframe < fps*rot2waitd[mid]:
+        return rotangle
+    rotangle = rotanglehist[mid] = rotangle + d_rot_angle
+    return rotangle
 
 rotsensed = {MA:+1,MB:-1}
 def get_rots(scene,sceneframe,mid):
@@ -259,17 +268,17 @@ jigglesd = {
 
 canvas_center = np.array([d/2 for d in (width,height)])
 
-scene = scenes[0]
-sceneframe = sceneframe = 0
-frame = 0
-
 util.clean_folder(folder,'svg','png')
 print('generating svgs')
 class EndRender(Exception): pass
+def get_prefix(scenenum): 
+    return 'S{:d}s{:02d}'.format(metascene,scenenum)
+scene = scenes[0]
+sceneframe = frame = 0
 while True:
     try:        
         scenenum, scenename = scene
-        prefix = 'S{:d}s{:02d}'.format(metascene,scenenum)
+        prefix = get_prefix(scenenum)
         skipping_scene = (
             scenestorender is not RENDER_ALL and 
             scene not in scenestorender 
@@ -282,7 +291,7 @@ while True:
                 print('converting scene {} svg -> png'.format(scenename))
                 util.convert_svgs(folder,dpi=dpi,prepend=prefix)
                 print('creating scene {} gif'.format(scenename))
-                util.create_gif(folder,fps=15//downsample,prepend=prefix)
+                util.create_gif(folder,fps=fps,prepend=prefix)
                 print('deleting scene {} svgs'.format(scenename))
                 util.clean_folder(folder,'svg',prepend=prefix)
             # get next scene index
@@ -313,10 +322,14 @@ while True:
             )        
         doc = svgtools.get_svg(width,height)
         animate.plot_spheres(doc,spheres)        
-        svgtools.write_svg(doc,util.fmtf(folder,frame,'svg',prepend=prefix))
+        svgtools.write_svg(doc,util.fmtf(folder,sceneframe+1,'svg',prepend=prefix))
         sceneframe += 1
         frame += 1
     except EndRender:
         break
 if single_file:
-    Image.open(util.fmtf(folder,0,'png',prepend=prefix)).show()
+    Image.open(util.fmtf(folder,1,'png',prepend=prefix)).show()
+gifprefix = get_prefix(0)
+pngprefix = gifprefix[:2]
+print('creating composite gif')
+util.create_gif(folder,prepend=pngprefix,gifprepend=gifprefix,fps=fps)
