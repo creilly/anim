@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1280"
+   height="720"
+   viewBox="0 0 1280 720"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
+   sodipodi:docname="gold.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.578904"
+     inkscape:cx="614.09146"
+     inkscape:cy="582.99822"
+     inkscape:window-width="1920"
+     inkscape:window-height="1137"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#424242;stroke-width:30.2362;stroke-linecap:round;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect1"
+       width="711.60846"
+       height="835.64594"
+       x="86.723503"
+       y="39.202061"
+       transform="matrix(0.26458333,0,0,0.26458333,7.3287466,18.321866)"
+       ry="68.680557" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:472.441px;line-height:normal;font-family:'Franklin Gothic Medium';-inkscape-font-specification:'Franklin Gothic Medium, ';text-align:center;text-decoration-color:#000000;text-anchor:middle;fill:#424242;fill-opacity:1;stroke:none;stroke-width:15.0009;stroke-linecap:round;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       x="258.94904"
+       y="304.14297"
+       id="text1"
+       transform="matrix(0.26458333,0,0,0.26458333,59.867893,78.173297)"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         x="258.94904"
+         y="304.14297"
+         style="font-size:472.441px">Au</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:151.181px;line-height:normal;font-family:'Franklin Gothic Medium';-inkscape-font-specification:'Franklin Gothic Medium, ';text-align:center;text-decoration-color:#000000;text-anchor:middle;fill:#424242;fill-opacity:1;stroke:none;stroke-width:15.0009;stroke-linecap:round;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       x="258.94904"
+       y="304.14297"
+       id="text2"
+       transform="matrix(0.26458333,0,0,0.26458333,56.45725,119.70286)"><tspan
+         sodipodi:role="line"
+         id="tspan2"
+         x="258.94904"
+         y="304.14297"
+         style="font-size:151.181px">Gold</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:83.1496px;line-height:normal;font-family:'Franklin Gothic Medium';-inkscape-font-specification:'Franklin Gothic Medium, ';text-align:center;text-decoration-color:#000000;text-anchor:middle;fill:#424242;fill-opacity:1;stroke:none;stroke-width:15.0009;stroke-linecap:round;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       x="258.94904"
+       y="304.14297"
+       id="text3"
+       transform="matrix(0.26458333,0,0,0.26458333,20.764783,155.73587)"><tspan
+         sodipodi:role="line"
+         id="tspan3"
+         x="258.94904"
+         y="304.14297"
+         style="font-size:83.1496px">196.967</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:120.945px;line-height:normal;font-family:'Franklin Gothic Medium';-inkscape-font-specification:'Franklin Gothic Medium, ';text-align:center;text-decoration-color:#000000;text-anchor:middle;fill:#424242;fill-opacity:1;stroke:none;stroke-width:15.0009;stroke-linecap:round;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       x="258.94904"
+       y="304.14297"
+       id="text4"
+       transform="matrix(0.26458333,0,0,0.26458333,-3.3941804,-14.046769)"><tspan
+         sodipodi:role="line"
+         id="tspan4"
+         x="258.94904"
+         y="304.14297">79</tspan></text>
+  </g>
+</svg>
