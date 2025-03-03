@@ -1,0 +1,21 @@
+code for generating animated video to accompany article 
+
+https://www.science.org/doi/10.1126/science.adu1023
+
+the finished product can be seen at 
+
+https://youtu.be/-dYBi4lFHIc
+
+the modules `perspective`, `svgtools`, `animate`, and `util` are used together to 
+generate 2D animations of colorful spheres and curves with "hand-drawn"-looking outlines based off 
+of a specification of the 3D locations of the spheres in some ``scene-space''. 
+
+the `methane` module generates images of a methane molecule in the style described above 
+
+`gold` is the same except it generates a square array of spheres
+
+`pulse` generates a squiggly curve to emulate a laser pulse
+
+the `methane`, `gold`, and `pulse` modules when run as \_\_main\_\_ generate sample output
+
+see `scene1`, `scene2`, etc. for how all the libraries work together
