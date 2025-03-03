@@ -8,13 +8,14 @@ metascene = 1
 folder = 'scene1'
 
 single_file = False
+clean_pngs = True
 
 pp = pprint.PrettyPrinter().pprint
 
 width, height = 1280, 720
 dpi = 96
 fpso = 12
-downsample = 2
+downsample = 16
 
 scale = 800
 
@@ -64,7 +65,7 @@ scenes = (
 )
 
 RENDER_ALL = None
-scenestorender = (PANOUT,POPIN2,PAUSE2,ROTATE2)
+scenestorender = RENDER_ALL # (PANOUT,POPIN2,PAUSE2,ROTATE2)
 
 framed = {
     POPIN1: 73, PAUSE1: 71, ROTATE1: 74, PANOUT: 24, 
@@ -239,7 +240,7 @@ def get_hue_sat(scene,sceneframe,mid):
     sat = get_sat(scene,sceneframe,mid)    
     return (hue,sat)
 
-rotanglehist = {mid:0.0 for mid in mids}
+rotanglehist = {mid:phio for mid, phio in ((MA,0.0),(MB,np.pi*10.5/22))}
 rotscened = {MA:ROTATE1,MB:ROTATE2}
 rot2waitd = {MA:0.0,MB:0.75} # seconds
 def _get_rot_angle(scene,sceneframe,mid):
@@ -291,7 +292,7 @@ while True:
                 print('converting scene {} svg -> png'.format(scenename))
                 util.convert_svgs(folder,dpi=dpi,prepend=prefix)
                 print('creating scene {} gif'.format(scenename))
-                util.create_gif(folder,fps=fps,prepend=prefix)
+                util.create_gif(folder,fps=fpso,downsample=downsample,prepend=prefix)
                 print('deleting scene {} svgs'.format(scenename))
                 util.clean_folder(folder,'svg',prepend=prefix)
             # get next scene index
@@ -332,4 +333,7 @@ if single_file:
 gifprefix = get_prefix(0)
 pngprefix = gifprefix[:2]
 print('creating composite gif')
-util.create_gif(folder,prepend=pngprefix,gifprepend=gifprefix,fps=fps)
+util.create_gif(folder,prepend=pngprefix,gifprepend=gifprefix,fps=fpso,downsample=downsample)
+if clean_pngs:
+    print('cleaning all pngs')
+    util.clean_folder(folder,'png')

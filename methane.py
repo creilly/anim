@@ -134,11 +134,11 @@ def generate_methane_jiggles(n,gain=default_jiggle_gain):
 
 if __name__ == '__main__':
 
-    folder = 'elims'  
+    folder = 'methane-images'  
 
-    prefix = 'j'  
+    prefix = ''
 
-    to_clean = ['svg'] # ['svg','png']
+    to_clean = ['svg','png'] # ['svg','png']
 
     mode = TWIRL
 
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     print('svg->png conv time:',round(time.time()-to,1),',','dpi',dpi)
     if nphis > 1:
         to = time.time()    
-        util.create_gif(folder,gifname=prefix,prepend=prefix)
+        util.create_gif(folder,prepend=prefix)
         print('png->gif conv time:',round(time.time()-to,1),',','dpi',dpi)
         for ext in to_clean:
-            util.clean_folder(folder,ext,prefix)
+            util.clean_folder(folder,ext,prepend=prefix)

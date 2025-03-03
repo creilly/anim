@@ -7,6 +7,11 @@ s = np.sin
 # 1. rotation by angle t1 about z-axis ('roll')
 # 2. rotation by angle t2 about x-axis ('tilt')
 # 3. rotation by angle t3 about y-axis ('azim')
+# 
+# returns a 3x3 matrix which maps a vector [vx,vy,vz] expressed in lab-frame coordinates 
+# to a vector [vxp,vyp,vzp] expressed in a coordinate system obtained by 
+# transforming the lab-frame coordinate axes according to the sequence of rotations
+# described above
 def get_pixel_matrix(t1,t2,t3):
     (c1,s1),(c2,s2),(c3,s3) = (
         (
@@ -24,6 +29,16 @@ def get_pixel_matrix(t1,t2,t3):
             )
         )
     )
+
+# get the coordinates [xp,yp] of where the line pq 
+# intersects a plane perpendicular to the zp-axis 
+# and whose origin is located at the point p + zphat * zop
+# where the coordinate axes xp, yp, zp are obtained from the 
+# lab frame axes x, y, z by the rotation m^T
+# p and q are expressed in lab-frame axes system x, y, z
+#
+# typically one obtains the orthogonal matrix m from the 
+# `get_pixel_matrix` routine
 zop = 1
 def get_pixel(m,p,q):
     xbar, ybar, zbar = m.dot(q-p)
@@ -34,6 +49,22 @@ def get_pixel(m,p,q):
 # p : pin hole location
 # q : sphere center
 # r : sphere radius
+# 
+# get the ellipse which is 
+# the image of a sphere with 
+# center q and radius r obtained 
+# by a pinhole camera with 
+# pinhole location p and 
+# screen parameters m 
+# (zop assumed to be 1)
+# 
+# returns a pair of triplets 
+# (zbhat, zbo, dzb) 
+# where z = x, y
+# and 
+#   zbhat : unit vector [nxp,nyp] pointing towards major (x) or minor (y) ellipse axis
+#   zbo   : ellipse center components. center is xo * xbh + yo * ybh . [yo is incidentally always zero]
+#   dzb   : major (x) or minor (y) axis radius
 def get_ellipse(m,p,q,r):    
     qp = q - p
     R = np.linalg.norm(qp)    
@@ -62,6 +93,11 @@ def get_ellipse(m,p,q,r):
 
 # roll-free camera orientation
 # to look at point q from p
+#
+# determine the roll, tilt, and azim 
+# angles (t1, t2, t3) [see `get_pixel_matrix`]
+# for which the axis zp points 
+# parallel to pq and roll angle is 0
 def point_camera(p,q):
     qpx, qpy, qpz = q - p    
     theta = -np.arcsin(
@@ -73,8 +109,8 @@ def point_camera(p,q):
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
     import matplotlib.animation as an
-    nframes = 100
-    r = 10    
+    r = 3
+    nframes = 200
     phis = 2 * np.pi * np.arange(nframes) / nframes
     theta = np.pi/4
     def get_p(r,m):
@@ -100,24 +136,26 @@ if __name__ == '__main__':
         for gvec in gvecs
     ]
     hlines = [
-        plt.plot([],[],'o',ms=30,color='black',mfc='red')[0]
+        plt.plot([],[],color='red',linewidth=10)[0]
         for hvec in hvecs
     ]
     clines = [
-        plt.plot([],[],'o',ms=30,color='black',mfc='blue')[0]     
+        plt.plot([],[],color='blue',linewidth=10)[0]     
         for cvec in cvecs
     ]    
+    alphas = np.linspace(0,2.*np.pi,150)
+    C, H = 0, 1
     def update(frame):        
         t1 = 0.0
         t2 = theta
         t3 = phis[frame]
         m = get_pixel_matrix(t1,t2,t3)
         p = get_p(r,m)
-        toplot = []
-        for isg, vecs, lines in (
-            (True , gvecs, glines),
-            (False, cvecs, clines),
-            (False, hvecs, hlines)
+        toplot = []        
+        for species, isg, vecs, lines in (
+            (None, True , gvecs, glines),
+            (C, False, cvecs, clines),
+            (H, False, hvecs, hlines)
         ):
             gpoints = []           
             for vec, line in zip(vecs,lines):        
@@ -127,8 +165,9 @@ if __name__ == '__main__':
                 if isg:
                     gpoints.append((xp,yp))
                 else:
+                    e_params = get_ellipse(m,p,np.array(vec),{C:0.6,H:0.3}[species])
                     toplot.append(
-                        (zp,(xp,yp),line)
+                        (zp,(xp,yp) if isg else e_params,line)
                     )
             if isg:
                 xdata, ydata = zip(*gpoints)                
@@ -136,14 +175,18 @@ if __name__ == '__main__':
                 line.set_ydata(ydata)
                 line.set_zorder(-1)
         else:
-            for zorder, (_, (xp,yp), line) in enumerate(
-                sorted(toplot,reverse=True)
+            for zorder, (_, e_params, line) in enumerate(
+                sorted(toplot,reverse=True,key=lambda tup: tup[0])
             ):
-                line.set_xdata([xp])
-                line.set_ydata([yp])
-                line.set_zorder(zorder)
+                (xh,xo,dx), (yh,yo,dy) = e_params                
+                xps, yps = (
+                    dx * np.outer(np.cos(alphas),xh) + dy * np.outer(np.sin(alphas),yh) + np.outer(np.ones(alphas.shape),xo*xh + yo*yh)
+                ).transpose()                
+                line.set_xdata(xps)
+                line.set_ydata(yps)
+                line.set_zorder(zorder)                
         return (*hlines,*clines,*glines)
-    limscale = ls = 0.25
+    limscale = ls = 1.0
     plt.xlim(-ls,ls)
     plt.ylim(-ls,ls)
     plt.gca().set_aspect('equal')

@@ -80,7 +80,7 @@ def pulsef(t,to,deltat,power,wiggles,amp):
 
 if __name__ == '__main__':
 
-    folder = 'pims'
+    folder = 'pulse-images'
     width, height = 1280, 720
 
     sc = '#842dcc'

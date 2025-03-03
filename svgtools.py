@@ -3,10 +3,15 @@ import numpy as np, util
 from matplotlib import pyplot as plt
 import colorsys
 
-debug = False
+debug = True
 render_stroke = True
 
-# els ordered so that zeroth element is on top
+# add svg elements `els` to an svg doc, 
+# and add any definition elements `defels` 
+# to a defs element `defsel`
+#
+# if defsel not specified will create one and return it
+# els should be ordered so that element appearing as top layer is zeroth element
 def fill_svg(doc,els,defels,defsel=None):
     if defsel is None:
         defsel = et.Element('defs')
@@ -16,6 +21,7 @@ def fill_svg(doc,els,defels,defsel=None):
         doc.append(defsel)
     for el in els[::-1]:
         doc.append(el)
+    return defsel
 
 # generates noise waveform of length n
 # that looks pleasing for curves of length n=400
@@ -56,14 +62,6 @@ def generate_waveform(n):
         vo = v
     return np.array(xs) / (dr / 2)
 
-def transform(point,center,scale):
-    return (
-        scale*x + xo
-        for x, xo in zip(
-            point,center
-        )
-    )
-
 def format_style(styled):
     return ';'.join(
         ':'.join(
@@ -90,6 +88,11 @@ def get_gendpoints(center,rad,grad,gangle):
     gend = center - dg
     return gbeg, gend
 
+# angle : orientation of LG (radians)
+# rad   : how far away stops are from center of object (1.0 for stop appearing at edge of circle)
+# start : first color of LG
+# stop  : second color of LG
+# gid   : LG id (for linking to elements)
 class LinearGradientSettings:
     def __init__(self,angle,rad,start,stop,gid,opacity=1.0):
         self.angle = angle
@@ -99,6 +102,8 @@ class LinearGradientSettings:
         self.gid = gid
         self.opacity = opacity
 
+# for ellipse of center `center` and mean radius `rad`, 
+# create an LG with settings corresponding to `lgsettings`
 def generate_lg(center,rad,lgsettings : LinearGradientSettings):
     lgs = lgsettings
     gbeg, gend = get_gendpoints(center,rad,lgs.rad,lgs.angle)
@@ -132,12 +137,18 @@ def generate_lg(center,rad,lgsettings : LinearGradientSettings):
         )
     return lg
 
+# get vector normal to 2d vector `p`
 def get_normal(p):
     q = np.cross(
         [0,0,1],[*p,0]
     )[:2]
     return q / np.linalg.norm(q)
 
+# create an ellipse and associated linear gradient fill
+# `center` : center of ellipse
+# `ax1`    : major axis vector
+# `ax2`    : minor axis vector
+# to       : starting phase of stroke (radians)
 def get_ellipse(
     center,ax1,ax2,to,
     stroke_color,stroke_thickness,stroke_opacity,
@@ -186,13 +197,20 @@ def get_ellipse(
         group.append(path)
     return group, lg
 
+# helper function for intersection detection
 def ccw(A,B,C):
     return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
 
+# helper function for intersection detection
 # Return true if line segments AB and CD intersect
 def intersect(A,B,C,D):
     return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
 
+# generate a "hand-drawn" looking path tracing N x 2 trajectory `vs` (i.e. vs = [(v1x,v1y),(v2x,v2y),...,(vNx,vNy)])
+# `vps` is an array of same size as vs and corresponds to an array of N vectors where the nth vector is normal to the tangent of the nth point of the trajectory
+# `buffer` scales the random stroke thickness (1.0 is a good starting point)
+# `search_length` defines how far the algorithm looks to see if there are any self-intersections of the generated wavy paths
+#   when there are tight inside turns of the path, self-intersections can occur
 def generate_wavy(vs,st,sc,so=1.0,vps=None,buffer=1.0,search_length=0):
     drs = generate_waveform(len(vs)) * buffer
     if vps is None:
@@ -232,9 +250,14 @@ def generate_wavy(vs,st,sc,so=1.0,vps=None,buffer=1.0,search_length=0):
         plt.plot(*zip(*pps),'.')
         plt.plot(*zip(*pms),'o')
         plt.plot(*zip(*vs))        
+        if search_length == 0:
+            for ps in (pps, pms):
+                for v, p in zip(vs,ps):
+                    plt.plot(
+                        *zip(v,p),color='black',marker='o',ms='3',mfc='none',mec='red'
+                    )
         plt.gca().set_aspect('equal')
-        plt.show()
-        # exit()
+        plt.show()        
     def fmt_node(code,*coords):
         return '{}{}'.format(
             code,' '.join(
@@ -335,17 +358,16 @@ if __name__ == '__main__':
     to = np.pi / 4
     ax1 = r1 * np.array([np.cos(angle),np.sin(angle)])
     ax2 = r2 * get_normal(ax1)
+    # to see self-intersections:
+    #  > set `r2` to 10 and
+    #  > set debug to True
+    # when you see the plot, zoom in on a tight corner
     ell, lg = get_ellipse(
-        (cx,cy),ax1,ax2,to,sc,st,gangle,grad,gstart,gstop,gid
+        (cx,cy),ax1,ax2,to,sc,st,1.0,LinearGradientSettings(gangle,grad,gstart,gstop,gid)
     )
-    scale = 100
-    # circ, lg = get_circle(
-    #     scale, scale, (cx,cy), np.pi/4, 
-    #     (np.pi/3, 0.75, '#d8d8d8', '#868686', 'lingrad')
-    # )
+    scale = 100    
     defs = et.Element('defs')
     defs.append(lg)
     doc.append(defs)
     doc.append(ell)
     write_svg(doc,'ell.svg')
-    util.show_image('ell.svg')

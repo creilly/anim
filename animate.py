@@ -4,7 +4,7 @@ def draw_sphere(
         m,p,q,r,
         center,scale,
         stroke_color, stroke_thickness, stroke_opacity, 
-        lgsettings, 
+        lgsettings
     ):
     (xbh,xbo,dxb), (ybh,ybo,dyb) = perp.get_ellipse(m,p,q,r)
     xbo, dxb, ybo, dyb = [

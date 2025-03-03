@@ -12,6 +12,7 @@ folder = 'scene3'
 single_file = False
 scene_giffing = True
 metascene_giffing = True
+clean_pngs = True
 
 pp = pprint.PrettyPrinter().pprint
 
@@ -19,7 +20,7 @@ width, height = 1280, 720
 canvas_shift = 0.0
 dpi = 96
 fpso = 12
-downsample = 1
+downsample = 8
 
 scale = 700
 
@@ -471,3 +472,6 @@ elif metascene_giffing:
     pngprefix = gifprefix[:2]
     print('creating composite gif')
     util.create_gif(folder,prepend=pngprefix,gifprepend=gifprefix,fps=fps)
+if clean_pngs:
+    print('cleaning pngs')
+    util.clean_folder(folder,'png')

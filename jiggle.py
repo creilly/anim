@@ -2,6 +2,8 @@ import numpy as np
 
 jiggle_gain = 0.4
 
+# generates a (n X shape) array of randomly forced harmonic motion
+# n = 200 at default params `a` (spring constant), `b` (damping), `c` (force amplitude) generates an appealing motion
 a = 400
 b = 4
 c = 40

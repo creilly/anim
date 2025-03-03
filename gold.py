@@ -59,7 +59,7 @@ qos = [
 gold_rad = lc * buff / 2
 
 if __name__ == '__main__':
-    folder = r'C:\Users\reilly\tmp\video\gold-images' # 'gatoms'
+    folder = 'gold-images'
     w, h = (1280, 720)
     cx, cy = w/2, h/2
     n = 20 # number of frames # oscillation period about 40
