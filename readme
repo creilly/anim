@@ -16,6 +16,6 @@ the `methane` module generates images of a methane molecule in the style describ
 
 `pulse` generates a squiggly curve to emulate a laser pulse
 
-the `methane`, `gold`, and `pulse` modules when run as \_\_main\_\_ generate sample output
+the `methane`, `gold`, and `pulse` modules when run as __main__ generate sample output
 
 see `scene1`, `scene2`, etc. for how all the libraries work together
